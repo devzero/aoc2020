@@ -29,5 +29,7 @@ pub fn main() anyerror!void {
         }
         lineno += 1;
     }
-    try std.io.getStdOut().writer().print("Part1: {}\nPart2: {}\n", .{ treesHit(trees, 3, 1), treesHit(trees, 1, 1) * treesHit(trees, 3, 1) * treesHit(trees, 5, 1) * treesHit(trees, 7, 1) * treesHit(trees, 1, 2) });
+    const part1 = treesHit(trees, 3, 1);
+    const part2 = treesHit(trees, 1, 1) * treesHit(trees, 3, 1) * treesHit(trees, 5, 1) * treesHit(trees, 7, 1) * treesHit(trees, 1, 2);
+    try std.io.getStdOut().writer().print("Part1: {}\nPart2: {}\n", .{ part1, part2 });
 }
