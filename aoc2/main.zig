@@ -1,8 +1,7 @@
 const std = @import("std");
+const input = @embedFile("input");
 
 pub fn isValid(passline: []const u8, part1: bool) bool {
-    if (passline.len == 0)
-        return false;
     const dash = std.mem.indexOf(u8, passline, "-") orelse return false;
     const firstspace = std.mem.indexOf(u8, passline, " ") orelse return false;
     const colon = std.mem.indexOf(u8, passline, ":") orelse return false;
@@ -10,6 +9,7 @@ pub fn isValid(passline: []const u8, part1: bool) bool {
     const high = std.fmt.parseUnsigned(u32, passline[dash + 1 .. firstspace], 10) catch return false;
     const c = passline[firstspace + 1];
     const pass = passline[colon + 2 ..];
+
     if (part1) {
         return (((pass[low - 1] == c) and (pass[high - 1] != c)) or ((pass[low - 1] != c) and (pass[high - 1] == c)));
     } else {
@@ -25,9 +25,7 @@ pub fn isValid(passline: []const u8, part1: bool) bool {
 }
 
 pub fn main() anyerror!void {
-    const fst = (try std.fs.cwd().openFile("input", .{})).reader();
-    const passwdfile = try fst.readAllAlloc(std.heap.page_allocator, std.math.maxInt(u64));
-    var it = std.mem.split(passwdfile, "\n");
+    var it = std.mem.split(input, "\n");
     var part1: u32 = 0;
     var part2: u32 = 0;
     while (it.next()) |line| {
