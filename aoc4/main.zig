@@ -55,14 +55,13 @@ pub fn isValidField(field: []const u8, data: []u8) bool {
 }
 
 pub fn main() anyerror!void {
-    const alc = std.heap.page_allocator;
-    var it = std.mem.split(input, "\n\n");
     var part1_valid_passports: u32 = 0;
     var part2_valid_passports: u32 = 0;
+    var it = std.mem.split(input, "\n\n");
     while (it.next()) |raw_passport| {
-        var passport2: [input.len]u8 = std.mem.zeroes([input.len]u8);
-        var replacements = std.mem.replace(u8, raw_passport, "\n", " ", &passport2);
-        var passport = passport2[0..raw_passport.len];
+        var passport_buf: [input.len]u8 = std.mem.zeroes([input.len]u8);
+        var replacements = std.mem.replace(u8, raw_passport, "\n", " ", &passport_buf);
+        var passport = passport_buf[0..raw_passport.len];
 
         var seen_fields: u8 = 0;
         var valid_fields: u8 = 0;
