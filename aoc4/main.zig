@@ -1,36 +1,38 @@
 const std = @import("std");
 const input = @embedFile("input");
+const parseUnsigned = std.fmt.parseUnsigned;
+const eql = std.mem.eql;
 
 const required_fields = .{ "byr:", "iyr:", "eyr:", "hgt:", "hcl:", "ecl:", "pid:" };
 
 pub fn isValidField(field: []const u8, data: []u8) bool {
-    if (std.mem.eql(u8, field, "byr:")) {
-        const year = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+    if (eql(u8, field, "byr:")) {
+        const year = parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 1920) and (year <= 2002)) return true;
-    } else if (std.mem.eql(u8, field, "iyr:")) {
-        const year = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+    } else if (eql(u8, field, "iyr:")) {
+        const year = parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 2010) and (year <= 2020)) return true;
-    } else if (std.mem.eql(u8, field, "eyr:")) {
-        const year = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+    } else if (eql(u8, field, "eyr:")) {
+        const year = parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 2020) and (year <= 2030)) return true;
-    } else if (std.mem.eql(u8, field, "hgt:")) {
-        const hgt = std.fmt.parseUnsigned(u16, data[0 .. data.len - 2], 10) catch return false;
-        if (std.mem.eql(u8, data[data.len - 2 .. data.len], "cm"))
+    } else if (eql(u8, field, "hgt:")) {
+        const hgt = parseUnsigned(u16, data[0 .. data.len - 2], 10) catch return false;
+        if (eql(u8, data[data.len - 2 .. data.len], "cm"))
             if ((hgt >= 150) and (hgt <= 193)) return true;
-        if (std.mem.eql(u8, data[data.len - 2 .. data.len], "in"))
+        if (eql(u8, data[data.len - 2 .. data.len], "in"))
             if ((hgt >= 59) and (hgt <= 76)) return true;
-    } else if (std.mem.eql(u8, field, "hcl:")) {
+    } else if (eql(u8, field, "hcl:")) {
         if (data.len != 7) return false;
         if (data[0] != '#') return false;
         for (data[1..7]) |ch| {
             if ((('0' > ch) or ('9' < ch)) and (('a' > ch) or ('f' < ch))) return false;
         }
         return true;
-    } else if (std.mem.eql(u8, field, "ecl:")) {
+    } else if (eql(u8, field, "ecl:")) {
         inline for (.{ "amb", "blu", "brn", "gry", "grn", "hzl", "oth" }) |color| {
-            if (std.mem.eql(u8, color, data)) return true;
+            if (eql(u8, color, data)) return true;
         }
-    } else if (std.mem.eql(u8, field, "pid:")) {
+    } else if (eql(u8, field, "pid:")) {
         if (data.len != 9) return false;
         for (data[0..9]) |ch| {
             if (('0' > ch) or ('9' < ch)) return false;
