@@ -5,22 +5,22 @@ const required_fields = .{ "byr:", "iyr:", "eyr:", "hgt:", "hcl:", "ecl:", "pid:
 
 pub fn isValidField(field: []const u8, data: []u8) bool {
     if (std.mem.eql(u8, field, "byr:")) {
-        var year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+        const year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 1920) and (year <= 2002)) return true;
     }
 
     if (std.mem.eql(u8, field, "iyr:")) {
-        var year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+        const year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 2010) and (year <= 2020)) return true;
     }
 
     if (std.mem.eql(u8, field, "eyr:")) {
-        var year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
+        const year: u16 = std.fmt.parseUnsigned(u16, data, 10) catch return false;
         if ((year >= 2020) and (year <= 2030)) return true;
     }
 
     if (std.mem.eql(u8, field, "hgt:")) {
-        var hgt: u16 = std.fmt.parseUnsigned(u16, data[0 .. data.len - 2], 10) catch return false;
+        const hgt: u16 = std.fmt.parseUnsigned(u16, data[0 .. data.len - 2], 10) catch return false;
         if (std.mem.eql(u8, data[data.len - 2 .. data.len], "cm"))
             if ((hgt >= 150) and (hgt <= 193)) return true;
         if (std.mem.eql(u8, data[data.len - 2 .. data.len], "in"))
