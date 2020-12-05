@@ -3,7 +3,7 @@ const input = @embedFile("input");
 
 pub fn seatID(pass: []const u8) !u16 {
     var buf: [10]u8 = undefined;
-    var num_replaced = std.mem.replace(u8, pass[0..], "F", "0", &buf);
+    var num_replaced = std.mem.replace(u8, pass[0..10], "F", "0", &buf);
     num_replaced = std.mem.replace(u8, buf[0..], "B", "1", &buf);
     num_replaced = std.mem.replace(u8, buf[0..], "L", "0", &buf);
     num_replaced = std.mem.replace(u8, buf[0..], "R", "1", &buf);
