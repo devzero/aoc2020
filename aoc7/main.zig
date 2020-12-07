@@ -1,5 +1,6 @@
 const std = @import("std");
 const input = @embedFile("input");
+const ArrayList = std.ArrayList;
 
 const Adjs = enum {
     bright,
@@ -75,7 +76,7 @@ const Bag = struct { adj: Adjs, color: Colors };
 
 const BagNum = struct { bag: Bag, num: u8 };
 
-const Ruleset = std.AutoHashMap(Bag, std.ArrayList(BagNum));
+const Ruleset = std.AutoHashMap(Bag, []BagNum);
 
 pub fn findEnum(comptime T: type, word: []const u8) ?T {
     inline for (@typeInfo(T).Enum.fields) |xEnumInfo| {
@@ -95,6 +96,7 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
     var curNum: u8 = undefined;
     var curDstBag: Bag = undefined;
     var curBagNum: BagNum = undefined;
+    var curList = ArrayList(BagNum).init(allocator);
     while (words.next()) |word| {
         ws = switch (ws) {
             .SrcBagAdj => blk: {
@@ -102,25 +104,26 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
                     curAdj = adj;
                     break :blk .SrcBagColor;
                 }
-                break :blk .Error;
+                break :blk WordState.Error;
             },
             .SrcBagColor => blk: {
                 if (findEnum(Colors, word)) |color| {
-                    curAdj = color;
+                    curColor = color;
                     break :blk .BagsWord;
                 }
-                break :blk .Error;
+                break :blk WordState.Error;
             },
             .BagsWord => blk: {
                 curSrcBag = Bag{ .adj = curAdj, .color = curColor };
-                if (!rules.contains(curSrcBag)) {
-                    try rules.put(curSrcBag, ArrayList(BagNum).init(allocator));
-                } else std.logl.warn("{} {} already exists in rules!", .{ curAdj, curColor });
-                break :blk if (std.mem.eql(u8, word, "bags")) .Contains else .Error;
+                break :blk if (std.mem.eql(u8, word, "bags")) .Contains else WordState.Error;
             },
-            .Contains => if (std.mem.eql(u8, word, "contain")) .DstBagsNum else .Error,
+            .Contains => if (std.mem.eql(u8, word, "contain")) .DstBagsNum else WordState.Error,
             .DstBagsNum => blk: {
-                curNum = std.fmt.parseUnsigned(u8, word, 10) catch break :blk .Error;
+                if (std.mem.eql(u8, word, "no")) {
+                    try rules.put(curSrcBag, curList.toOwnedSlice());
+                    break :blk .End;
+                }
+                curNum = std.fmt.parseUnsigned(u8, word, 10) catch break :blk WordState.Error;
                 break :blk .DstBagAdj;
             },
             .DstBagAdj => blk: {
@@ -128,30 +131,61 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
                     curAdj = adj;
                     break :blk .DstBagColor;
                 }
-                break :blk .Error;
+                break :blk WordState.Error;
             },
             .DstBagColor => blk: {
                 if (findEnum(Colors, word)) |color| {
-                    curAdj = color;
+                    curColor = color;
                     break :blk .BagsSomething;
                 }
-                break :blk .Error;
+                break :blk WordState.Error;
             },
             .BagsSomething => blk: {
-                curDstBag = Bag{ .adj = curAdj, .color = CurColor };
-                curBagNum = BagNum{ .bag = CurDstBag, .num = curNum };
-                rules.get(curSrcBag).append(curBagNum);
-                break :blk if (word[word.len] == ',') .DstBagsNum else if (word[word.len] == '.') .End else .Error;
+                curDstBag = Bag{ .adj = curAdj, .color = curColor };
+                curBagNum = BagNum{ .bag = curDstBag, .num = curNum };
+                try curList.append(curBagNum);
+                if (word[word.len - 1] == ',')
+                    break :blk .DstBagsNum;
+                if (word[word.len - 1] == '.') {
+                    try rules.put(curSrcBag, curList.toOwnedSlice());
+                    break :blk .End;
+                }
+                break :blk WordState.Error;
             },
             .End => {
                 return;
             },
-            .Error => {
+            WordState.Error => {
                 std.log.warn("ERROR PARSING WORD ({}) IN LINE: {}", .{ word, line });
-                return error.ParseError;
+                return error.ParsError;
             },
         };
     }
+}
+
+pub fn findBag(needle: Bag, rules: Ruleset, allocator: *std.mem.Allocator) ![]Bag {
+    var bagList = ArrayList(Bag).init(allocator);
+    var rule_it = rules.iterator();
+    while (rule_it.next()) |rule_bag| {
+        var candidate_bag = rule_bag.key;
+        for (rule_bag.value) |bagNum| {
+            if ((bagNum.bag.adj == needle.adj) and (bagNum.bag.color == needle.color)) {
+                try bagList.append(candidate_bag);
+            }
+        }
+    }
+    return bagList.toOwnedSlice();
+}
+
+pub fn subBags(parent: Bag, rules: Ruleset) u64 {
+    var retval: u64 = 1;
+    var subBagNums = rules.get(parent);
+    if (subBagNums) |subs| {
+        for (subs) |subBagNum| {
+            retval += subBagNum.num * (subBags(subBagNum.bag, rules));
+        }
+    }
+    return retval;
 }
 
 pub fn main() anyerror!void {
@@ -162,5 +196,21 @@ pub fn main() anyerror!void {
         if (line.len == 0) continue;
         try parseLine(line, &rules, std.heap.page_allocator);
     }
-    std.log.info("Part1: {}", .{0});
+
+    var soln_set = std.AutoHashMap(Bag, void).init(std.heap.page_allocator);
+    var last_size: u32 = 0;
+    for (try findBag(Bag{ .adj = .shiny, .color = .gold }, rules, std.heap.page_allocator)) |bag| {
+        try soln_set.put(bag, {});
+    }
+    while (soln_set.count() != last_size) {
+        last_size = soln_set.count();
+        var it = soln_set.iterator();
+        while (it.next()) |entry| {
+            for (try findBag(entry.key, rules, std.heap.page_allocator)) |bag| {
+                try soln_set.put(bag, {});
+            }
+        }
+    }
+    std.log.info("Part1: {}", .{soln_set.count()});
+    std.log.info("Part2: {}", .{subBags(Bag{ .adj = .shiny, .color = .gold }, rules) - 1});
 }
