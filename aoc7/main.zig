@@ -68,8 +68,6 @@ const WordState = enum {
     DstBagAdj,
     DstBagColor,
     BagsSomething,
-    End,
-    Error,
 };
 
 const Bag = struct { adj: Adjs, color: Colors };
@@ -104,26 +102,26 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
                     curAdj = adj;
                     break :blk .SrcBagColor;
                 }
-                break :blk WordState.Error;
+                return error.ParserErrorSrcBagAdj;
             },
             .SrcBagColor => blk: {
                 if (findEnum(Colors, word)) |color| {
                     curColor = color;
                     break :blk .BagsWord;
                 }
-                break :blk WordState.Error;
+                return error.ParserErrorSrcBagColor;
             },
             .BagsWord => blk: {
                 curSrcBag = Bag{ .adj = curAdj, .color = curColor };
-                break :blk if (std.mem.eql(u8, word, "bags")) .Contains else WordState.Error;
+                break :blk if (std.mem.eql(u8, word, "bags")) .Contains else return error.ParserErrorBagsWord;
             },
-            .Contains => if (std.mem.eql(u8, word, "contain")) .DstBagsNum else WordState.Error,
+            .Contains => if (std.mem.eql(u8, word, "contain")) .DstBagsNum else return error.ParserErrorContains,
             .DstBagsNum => blk: {
                 if (std.mem.eql(u8, word, "no")) {
                     try rules.put(curSrcBag, curList.toOwnedSlice());
-                    break :blk .End;
+                    return;
                 }
-                curNum = std.fmt.parseUnsigned(u8, word, 10) catch break :blk WordState.Error;
+                curNum = try std.fmt.parseUnsigned(u8, word, 10);
                 break :blk .DstBagAdj;
             },
             .DstBagAdj => blk: {
@@ -131,14 +129,14 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
                     curAdj = adj;
                     break :blk .DstBagColor;
                 }
-                break :blk WordState.Error;
+                return error.ParserErrorDstBagAdj;
             },
             .DstBagColor => blk: {
                 if (findEnum(Colors, word)) |color| {
                     curColor = color;
                     break :blk .BagsSomething;
                 }
-                break :blk WordState.Error;
+                return error.ParserErrorDstBagColor;
             },
             .BagsSomething => blk: {
                 curDstBag = Bag{ .adj = curAdj, .color = curColor };
@@ -148,22 +146,15 @@ pub fn parseLine(line: []const u8, rules: *Ruleset, allocator: *std.mem.Allocato
                     break :blk .DstBagsNum;
                 if (word[word.len - 1] == '.') {
                     try rules.put(curSrcBag, curList.toOwnedSlice());
-                    break :blk .End;
+                    return;
                 }
-                break :blk WordState.Error;
-            },
-            .End => {
-                return;
-            },
-            WordState.Error => {
-                std.log.warn("ERROR PARSING WORD ({}) IN LINE: {}", .{ word, line });
-                return error.ParsError;
+                return error.ParserErrorBagsSometihng;
             },
         };
     }
 }
 
-pub fn findBag(needle: Bag, rules: Ruleset, allocator: *std.mem.Allocator) ![]Bag {
+pub fn findWhatBagItIsIn(needle: Bag, rules: Ruleset, allocator: *std.mem.Allocator) ![]Bag {
     var bagList = ArrayList(Bag).init(allocator);
     var rule_it = rules.iterator();
     while (rule_it.next()) |rule_bag| {
@@ -177,40 +168,43 @@ pub fn findBag(needle: Bag, rules: Ruleset, allocator: *std.mem.Allocator) ![]Ba
     return bagList.toOwnedSlice();
 }
 
-pub fn subBags(parent: Bag, rules: Ruleset) u64 {
+pub fn numBagsInside(parent: Bag, rules: Ruleset) u64 {
     var retval: u64 = 1;
     var subBagNums = rules.get(parent);
     if (subBagNums) |subs| {
         for (subs) |subBagNum| {
-            retval += subBagNum.num * (subBags(subBagNum.bag, rules));
+            retval += subBagNum.num * (numBagsInside(subBagNum.bag, rules));
         }
     }
     return retval;
 }
 
 pub fn main() anyerror!void {
-    var rules = Ruleset.init(std.heap.page_allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator: *std.mem.Allocator = &arena.allocator;
+    var rules = Ruleset.init(allocator);
     defer rules.deinit();
     var lines = std.mem.split(input, "\n");
     while (lines.next()) |line| {
         if (line.len == 0) continue;
-        try parseLine(line, &rules, std.heap.page_allocator);
+        try parseLine(line, &rules, allocator);
     }
 
-    var soln_set = std.AutoHashMap(Bag, void).init(std.heap.page_allocator);
+    var soln_set = std.AutoHashMap(Bag, void).init(allocator);
     var last_size: u32 = 0;
-    for (try findBag(Bag{ .adj = .shiny, .color = .gold }, rules, std.heap.page_allocator)) |bag| {
+    for (try findWhatBagItIsIn(Bag{ .adj = .shiny, .color = .gold }, rules, allocator)) |bag| {
         try soln_set.put(bag, {});
     }
     while (soln_set.count() != last_size) {
         last_size = soln_set.count();
         var it = soln_set.iterator();
         while (it.next()) |entry| {
-            for (try findBag(entry.key, rules, std.heap.page_allocator)) |bag| {
+            for (try findWhatBagItIsIn(entry.key, rules, allocator)) |bag| {
                 try soln_set.put(bag, {});
             }
         }
     }
     std.log.info("Part1: {}", .{soln_set.count()});
-    std.log.info("Part2: {}", .{subBags(Bag{ .adj = .shiny, .color = .gold }, rules) - 1});
+    std.log.info("Part2: {}", .{numBagsInside(Bag{ .adj = .shiny, .color = .gold }, rules) - 1});
 }
