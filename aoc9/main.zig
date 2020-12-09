@@ -1,10 +1,7 @@
 const std = @import("std");
 const input = @embedFile("input");
-const WIN = 25;
-const SUMSSIZE = (WIN * WIN - WIN) / 2;
-const Allocator = std.mem.Allocator;
 
-pub fn parseInput(inp: []const u8, allocator: *Allocator) ![]u64 {
+pub fn parseInput(inp: []const u8, allocator: *std.mem.Allocator) ![]u64 {
     var lines = std.mem.split(inp, "\n");
     var numsAL = std.ArrayList(u64).init(std.heap.page_allocator);
     defer numsAL.deinit();
@@ -15,15 +12,15 @@ pub fn parseInput(inp: []const u8, allocator: *Allocator) ![]u64 {
     return numsAL.toOwnedSlice();
 }
 
-pub fn solvePart1(nums: []u64) !u64 {
-    var cur: u16 = WIN;
+pub fn solvePart1(nums: []u64, windowSize: u16) !u64 {
+    var cur: u16 = windowSize;
     outer: while (cur < nums.len) : (cur += 1) {
         var i: u16 = 0;
         var j: u16 = 0;
-        while (i < WIN) : (i += 1) {
+        while (i < windowSize) : (i += 1) {
             j = i + 1;
-            while (j < WIN) : (j += 1) {
-                const thissum = nums[cur + i - WIN] + nums[cur + j - WIN];
+            while (j < windowSize) : (j += 1) {
+                const thissum = nums[cur + i - windowSize] + nums[cur + j - windowSize];
                 if (nums[cur] == thissum) {
                     continue :outer;
                 }
@@ -69,7 +66,7 @@ pub fn main() anyerror!void {
     const nums = try parseInput(input, std.heap.page_allocator);
     defer std.heap.page_allocator.free(nums);
 
-    const part1 = try solvePart1(nums);
+    const part1 = try solvePart1(nums, 25);
     const part2 = try solvePart2(nums, part1);
 
     std.log.info("Part1: {}", .{part1});
