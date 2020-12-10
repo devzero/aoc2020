@@ -13,7 +13,7 @@ pub fn parseInput(inp: []const u8, allocator: *std.mem.Allocator) ![]u32 {
     return items.toOwnedSlice();
 }
 
-pub fn solvePart1(nums) u32 {
+pub fn solvePart1(nums: []u32) u32 {
     var joltCount = [3]u32{ 0, 0, 0 };
     for (nums) |n, i| {
         if (i >= nums.len - 1) {
@@ -29,15 +29,13 @@ pub fn solvePart1(nums) u32 {
 pub fn pathCount(nums: []u32, i: usize, memo: *std.AutoHashMap(usize, u64)) anyerror!u64 {
     if (memo.get(i)) |result|
         return result;
-    var pathCounts: u64 = 0;
     if (i == nums.len - 1)
         return 1;
-    if ((i < nums.len - 1) and ((nums[i + 1] - nums[i]) < 4))
-        pathCounts += try pathCount(nums, i + 1, memo);
-    if ((i < nums.len - 2) and ((nums[i + 2] - nums[i]) < 4))
-        pathCounts += try pathCount(nums, i + 2, memo);
-    if ((i < nums.len - 3) and ((nums[i + 3] - nums[i]) < 4))
-        pathCounts += try pathCount(nums, i + 3, memo);
+    var pathCounts: u64 = 0;
+    for ([3]usize{ 1, 2, 3 }) |off| {
+        if ((i < nums.len - off) and ((nums[i + off] - nums[i]) < 4))
+            pathCounts += try pathCount(nums, i + off, memo);
+    }
     try memo.put(i, pathCounts);
     return pathCounts;
 }
