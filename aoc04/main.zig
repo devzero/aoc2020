@@ -63,6 +63,6 @@ pub fn main() anyerror!void {
         if (all_fields_there) part1 += 1;
         if (all_fields_valid) part2 += 1;
     }
-    std.log.info("part1: {}", .{part1});
-    std.log.info("part2: {}", .{part2});
+    std.log.info("Part1: {}", .{part1});
+    std.log.info("Part2: {}", .{part2});
 }

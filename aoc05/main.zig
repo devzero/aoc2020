@@ -30,6 +30,6 @@ pub fn main() anyerror!void {
     while (i < maxID) : (i += 1) {
         if (!seats[i]) missingSeat = i;
     }
-    std.log.info("part1: {}", .{maxID});
-    std.log.info("part2: {}", .{missingSeat});
+    std.log.info("Part1: {}", .{maxID});
+    std.log.info("Part2: {}", .{missingSeat});
 }

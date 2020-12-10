@@ -31,5 +31,6 @@ pub fn main() anyerror!void {
     }
     const part1 = treesHit(trees, 3, 1);
     const part2 = treesHit(trees, 1, 1) * treesHit(trees, 3, 1) * treesHit(trees, 5, 1) * treesHit(trees, 7, 1) * treesHit(trees, 1, 2);
-    try std.io.getStdOut().writer().print("Part1: {}\nPart2: {}\n", .{ part1, part2 });
+    std.log.info("Part1: {}", .{part1});
+    std.log.info("Part2: {}", .{part2});
 }

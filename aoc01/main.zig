@@ -19,14 +19,14 @@ pub fn solve(nums: []const u32, part1: bool) !void {
             if (part1) {
                 std.log.debug("X: {} Y: {} ({}.{})", .{ x, y, idx0, idx1 });
                 if ((x + y) == 2020) {
-                    try std.io.getStdOut().writer().print("Part1: {}\n", .{x * y});
+                    std.log.info("Part1: {}", .{x * y});
                     return;
                 }
             } else {
                 for (nums[std.math.max(idx0, idx1) + 1 ..]) |z, idx2| {
                     std.log.debug("X: {} Y: {} Z:{} ({},{},{})", .{ x, y, z, idx0, idx1, idx2 });
                     if ((x + y + z) == 2020) {
-                        try std.io.getStdOut().writer().print("Part2: {}\n", .{x * y * z});
+                        std.log.info("Part2: {}", .{x * y * z});
                         return;
                     }
                 }

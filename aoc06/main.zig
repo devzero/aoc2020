@@ -37,6 +37,6 @@ pub fn main() anyerror!void {
         part1 += num_qs;
         part2 += num_commonqs;
     }
-    std.log.debug("Part1: {}", .{part1});
-    std.log.debug("Part2: {}", .{part2});
+    std.log.info("Part1: {}", .{part1});
+    std.log.info("Part2: {}", .{part2});
 }

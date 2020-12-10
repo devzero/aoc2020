@@ -34,5 +34,6 @@ pub fn main() anyerror!void {
         if (isValid(line, false))
             part2 += 1;
     }
-    try std.io.getStdOut().writer().print("Part1: {}\nPart2: {}\n", .{ part1, part2 });
+    std.log.info("Part1: {}", .{part1});
+    std.log.info("Part2: {}", .{part2});
 }
