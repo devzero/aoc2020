@@ -41,7 +41,7 @@ pub fn findFirstBus(in: InData) u64 {
 }
 
 pub fn invmod(rawN: u128, n: u128) ?u128 {
-    var N: u128 = rawN % n;
+    const N: u128 = rawN % n;
     var i: u128 = 0;
     while (i < n) : (i += 1) {
         if ((N * i) % n == 1)
@@ -68,7 +68,7 @@ pub fn main() anyerror!void {
     var alloc = std.heap.page_allocator;
     const inps = try parseInput(input, alloc);
     const part1 = findFirstBus(inps);
-    var part2: u128 = chinese(inps.buses, inps.busstarts).?;
+    const part2: u128 = chinese(inps.buses, inps.busstarts).?;
     std.log.info("Part1: {}", .{part1});
     std.log.info("Part2: {}", .{part2});
 }
