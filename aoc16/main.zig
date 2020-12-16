@@ -132,12 +132,15 @@ pub fn assignCol2Rule(in: AllInput, possibleColRules: *[NumFields][NumFields]boo
 }
 
 pub fn main() anyerror!void {
-    const in = try parseInput(input, std.heap.page_allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+    const in = try parseInput(input, allocator);
 
     var part1: usize = 0;
-    std.debug.assert((try badFields(in.valid, in.yours, std.heap.page_allocator)) == null);
+    std.debug.assert((try badFields(in.valid, in.yours, allocator)) == null);
     for (in.theirs) |ticket| {
-        for ((try badFields(in.valid, ticket, std.heap.page_allocator)) orelse &[0]u10{}) |badval| {
+        for ((try badFields(in.valid, ticket, allocator)) orelse &[0]u10{}) |badval| {
             part1 += badval;
         }
     }
