@@ -3,112 +3,100 @@ const input = @embedFile("input");
 
 const Num = u128;
 const Ops = enum { mult, add };
-const ExprTypes = enum { num, subexpr, eoe };
-const ExprOpExpr = struct { lhs: *Expr, op: Ops, rhs: *Expr };
-const Expr = union(ExprTypes) { num: Num, subexpr: *Expr, eoe: ExprOpExpr };
+const ExprTypes = enum { num, eoe };
+const ExprOpExpr = struct { lhs: *Expr, op: Ops, rhs: ?*Expr };
+const Expr = union(ExprTypes) { num: Num, eoe: ExprOpExpr };
 const ParseRet = struct { e: *Expr, newPos: usize };
 
 pub fn parseExpr(line: []const u8, startpos: usize, allocator: *std.mem.Allocator) anyerror!ParseRet {
-    //if (startpos == 0) std.log.debug("------ start parse: '{}'", .{line[startpos..]});
+    //std.log.debug("------ start parse: '{}'", .{line[startpos..]});
     var i: usize = startpos;
-    var retExp: *Expr = undefined;
-    var lhs: ?*Expr = null;
-    var op: ?Ops = null;
-    var rhs: ?*Expr = null;
+    var root: ?*Expr = null;
     while (i < line.len) : (i += 1) {
         const ch = line[i];
         //std.log.debug("== i={} ch='{c}'", .{ i, ch });
         if (' ' == ch) continue;
         if (')' == ch) {
-            i += 1;
+            //i += 1;
             break;
         }
-        if (lhs == null) {
+        if (root == null) {
             if (('0' <= ch) and ('9' >= ch)) {
-                lhs = try allocator.create(Expr);
-                lhs.?.* = Expr{ .num = ch - '0' };
-                //std.log.debug("set lhs={}", .{lhs.?.*.num});
+                root = try allocator.create(Expr);
+                root.?.* = Expr{ .num = ch - '0' };
             } else if ('(' == ch) {
                 var pr = try parseExpr(line, i + 1, allocator);
-                lhs = pr.e;
+                root = pr.e;
                 i = pr.newPos;
             } else return error.ParseError;
-        } else if (op == null) {
-            if ('*' == ch) {
-                op = .mult;
-                //std.log.debug("set op={}", .{op.?});
-            } else if ('+' == ch) {
-                op = .add;
-                //std.log.debug("set op={}", .{op.?});
-            } else return error.ParseError;
-        } else if (rhs == null) {
-            if (('0' <= ch) and ('9' >= ch)) {
-                rhs = try allocator.create(Expr);
-                rhs.?.* = Expr{ .num = ch - '0' };
-                //std.log.debug("set rhs={}", .{rhs.?.*.num});
-            } else if ('(' == ch) {
-                var pr = try parseExpr(line, i + 1, allocator);
-                rhs = pr.e;
-                i = pr.newPos;
-            } else return error.ParseError;
-        } else {
+        } else if ((@as(ExprTypes, root.?.*) != .eoe) or (root.?.eoe.rhs != null)) {
             if (('*' == ch) or ('+' == ch)) {
-                var newlhs = try allocator.create(Expr);
-                newlhs.* = Expr{ .eoe = ExprOpExpr{ .lhs = lhs.?, .op = op.?, .rhs = rhs.? } };
-                lhs = newlhs;
-                rhs = null;
-                op = switch (ch) {
+                var op: Ops = switch (ch) {
                     '*' => .mult,
                     '+' => .add,
                     else => unreachable,
                 };
+                var newexp = try allocator.create(Expr);
+                newexp.* = Expr{ .eoe = ExprOpExpr{ .lhs = root.?, .op = op, .rhs = null } };
+                root.? = newexp;
+            } else return error.ParseError;
+        } else {
+            if (('0' <= ch) and ('9' >= ch)) {
+                root.?.eoe.rhs = try allocator.create(Expr);
+                root.?.eoe.rhs.?.* = Expr{ .num = ch - '0' };
+            } else if ('(' == ch) {
+                var pr = try parseExpr(line, i + 1, allocator);
+                root.?.eoe.rhs = pr.e;
+                i = pr.newPos;
             } else return error.ParseError;
         }
     }
     if (i > line.len) i = line.len;
-    if ((!(lhs == null)) and (!(op == null)) and (!(rhs == null))) {
-        retExp = try allocator.create(Expr);
-        retExp.* = Expr{ .eoe = ExprOpExpr{ .lhs = lhs.?, .op = op.?, .rhs = rhs.? } };
-    } else if ((!(lhs == null)) and (op == null) and (rhs == null)) {
-        retExp = lhs.?;
-    } else return error.ParseError;
-    return ParseRet{ .e = retExp, .newPos = i };
+    if (root == null) return error.ParseError;
+    if ((@as(ExprTypes, root.?.*) != .eoe) or (root.?.eoe.rhs == null)) return error.ParseError;
+    //std.log.debug("return ({}): {}", .{ i, root.?.* });
+    return ParseRet{ .e = root.?, .newPos = i };
+}
+
+pub fn printExpr(expr: *Expr, d: u64) void {
+    if (@as(ExprTypes, expr.*) == .num) {
+        std.debug.print("{d}", .{expr.num});
+    } else {
+        const opc: u8 = switch (expr.eoe.op) {
+            .mult => '*',
+            .add => '+',
+        };
+        std.debug.print("(", .{});
+        printExpr(expr.eoe.lhs, d + 1);
+        std.debug.print(" {c} ", .{opc});
+        printExpr(expr.eoe.rhs.?, d + 1);
+        std.debug.print(")", .{});
+    }
+    if (d == 0)
+        std.debug.print("\n", .{});
 }
 
 pub fn evalExpr(expr: *Expr, depth: u64) Num {
     const e = expr.*;
-    var i: u64 = 0;
-    //while (i < depth) : (i += 1)
-    //std.debug.print(" ", .{});
-    //std.debug.print("{}\n", .{e});
     var val = switch (e) {
         .num => e.num,
-        .subexpr => evalExpr(e.subexpr, depth + 1),
         .eoe => switch (e.eoe.op) {
             .mult => blk: {
                 const l = evalExpr(e.eoe.lhs, depth + 1);
-                //i = 0;
-                //while (i < depth) : (i += 1)
-                //    std.debug.print("-", .{});
-                //std.debug.print("*\n", .{});
-                const r = evalExpr(e.eoe.rhs, depth + 1);
+                const r = evalExpr(e.eoe.rhs.?, depth + 1);
                 break :blk l * r;
             },
             .add => blk: {
                 const l = evalExpr(e.eoe.lhs, depth + 1);
-                //i = 0;
-                //while (i < depth) : (i += 1)
-                //    std.debug.print("-", .{});
-                //std.debug.print("+\n", .{});
-                const r = evalExpr(e.eoe.rhs, depth + 1);
+                const r = evalExpr(e.eoe.rhs.?, depth + 1);
                 break :blk l + r;
             },
         },
     };
-    //i = 0;
-    //while (i < depth) : (i += 1)
-    //    std.debug.print("-", .{});
-    //std.debug.print("={}\n", .{val});
+    if (depth == 0) {
+        std.debug.print("{} = ", .{val});
+        printExpr(expr, 0);
+    }
     return val;
 }
 
@@ -128,7 +116,7 @@ pub fn main() anyerror!void {
     while (lines.next()) |line| {
         if (0 == line.len) continue;
         var val = try evalLine(line, allocator);
-        std.log.debug("|{}| = {}", .{ line, val });
+        //std.log.debug("|{}| = {}", .{ line, val });
         part1 += val;
     }
     std.log.info("Part1: {}", .{part1});
